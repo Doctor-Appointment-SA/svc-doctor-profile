@@ -63,6 +63,9 @@ model MedicalRecord {
 
   patient Patient @relation(fields: [patient_id], references: [id])
   doctor  Doctor  @relation(fields: [doctor_id], references: [id])
+
+  @@index([patient_id])
+  @@index([doctor_id])
 }
 
 model Schedule {
