@@ -1,0 +1,76 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             String  @id @default(uuid())
+  username       String  @unique
+  password       String
+  name           String
+  lastname       String?
+  id_card        String?
+  health_benefits String?
+  role           String
+  createdAt      DateTime @default(now())
+
+  patient Patient?
+  doctor  Doctor?
+}
+
+model Patient {
+  id              String  @id @default(uuid())
+  hospital_number String?
+  user_id         String  @unique
+  user            User    @relation(fields: [user_id], references: [id])
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+}
+
+model Doctor {
+  id         String  @id @default(uuid())
+  specialty  String?
+  user_id    String  @unique
+  user       User    @relation(fields: [user_id], references: [id])
+  schedules  Schedule[]
+  appointments Appointment[]
+  medicalRecords MedicalRecord[]
+}
+
+model Appointment {
+  id           String   @id @default(uuid())
+  patient_id   String
+  doctor_id    String
+  appoint_date DateTime
+  status       String?
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  doctor  Doctor  @relation(fields: [doctor_id], references: [id])
+}
+
+model MedicalRecord {
+  id         String   @id @default(uuid())
+  patient_id String
+  doctor_id  String
+  diagnosis  String?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  doctor  Doctor  @relation(fields: [doctor_id], references: [id])
+}
+
+model Schedule {
+  id         String @id @default(uuid())
+  doctor_id  String
+  day        String
+  start_time String
+  end_time   String
+
+  doctor Doctor @relation(fields: [doctor_id], references: [id])
+}
