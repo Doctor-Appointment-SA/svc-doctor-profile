@@ -1,18 +1,29 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PatientsService } from './patients.service';
+// src/modules/patients/patients.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
-describe('PatientsService', () => {
-  let service: PatientsService;
+@Injectable()
+export class PatientsService {
+  constructor(private readonly prisma: PrismaService) {}
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [PatientsService],
-    }).compile();
+  list() {
+    return this.prisma.patient.findMany({
+      include: {
+        user_patient_idTouser: true,
+        user_patient_hospital_numberTouser: true,
+      },
+    });
+  }
 
-    service = module.get<PatientsService>(PatientsService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-});
+  async get(id: string) {
+    const p = await this.prisma.patient.findUnique({
+      where: { id },
+      include: {
+        user_patient_idTouser: true,
+        user_patient_hospital_numberTouser: true,
+      },
+    });
+    if (!p) throw new NotFoundException('Patient not found');
+    return p;
+  }
+}
