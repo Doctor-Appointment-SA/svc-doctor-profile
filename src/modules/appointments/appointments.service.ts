@@ -1,5 +1,9 @@
 // src/modules/appointments/appointments.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, AppointmentStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryAppointmentsDto } from './dto/query-appointments.dto';
@@ -54,9 +58,20 @@ export class AppointmentsService {
     });
   }
 
-  async byId(id: string) {
+  async byId(appointment_id: string, user_id: string) {
+    // verify ownership first
+    // const role = 'doctor';
+    const doctor_id = user_id;
+
+    const found = await this.prisma.appointment.findFirst({
+      where: { doctor_id: doctor_id },
+      select: { id: true },
+    });
+    if (!found)
+      throw new ForbiddenException('You do not own this prescription');
+
     const appt = await this.prisma.appointment.findUnique({
-      where: { id },
+      where: { id: appointment_id },
       include: {
         doctor: {
           include: { user: true }, // เผื่อใช้ชื่อหมอในหน้า detail
@@ -64,7 +79,12 @@ export class AppointmentsService {
         patient: {
           include: {
             user_patient_idTouser: {
-              select: { name: true, lastname: true, id_card: true, phone: true },
+              select: {
+                name: true,
+                lastname: true,
+                id_card: true,
+                phone: true,
+              },
             },
           },
         },
