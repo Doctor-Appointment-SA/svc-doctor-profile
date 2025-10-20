@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
@@ -27,7 +32,13 @@ export class MedicalRecordService {
     doctor_id: string,
     patient_id: string,
     dto: { diagnosis?: string; notes?: string },
+    user_id: string,
   ) {
+    // verfy owernership => user is the doctor of the appointment
+    const found = (user_id === doctor_id)
+    if (!found)
+      throw new ForbiddenException('You do not own this prescription');
+
     // ตรวจ FK เบื้องต้นเพื่อ error เป็น 400/404 ที่อ่านง่าย (optional แต่ช่วยดีบั๊ก)
     await this.ensureDoctorAndPatientExist(doctor_id, patient_id);
 
@@ -65,17 +76,28 @@ export class MedicalRecordService {
       // map Prisma error ให้อ่านง่าย
       if (e instanceof Prisma.PrismaClientKnownRequestError) {
         if (e.code === 'P2003') {
-          throw new BadRequestException('doctor_id/patient_id violates FK (not found)');
+          throw new BadRequestException(
+            'doctor_id/patient_id violates FK (not found)',
+          );
         }
       }
       throw e;
     }
   }
 
-  private async ensureDoctorAndPatientExist(doctor_id: string, patient_id: string) {
+  private async ensureDoctorAndPatientExist(
+    doctor_id: string,
+    patient_id: string,
+  ) {
     const [doc, pat] = await Promise.all([
-      this.prisma.doctor.findUnique({ where: { id: doctor_id }, select: { id: true } }),
-      this.prisma.patient.findUnique({ where: { id: patient_id }, select: { id: true } }),
+      this.prisma.doctor.findUnique({
+        where: { id: doctor_id },
+        select: { id: true },
+      }),
+      this.prisma.patient.findUnique({
+        where: { id: patient_id },
+        select: { id: true },
+      }),
     ]);
     if (!doc) throw new NotFoundException('doctor_id not found');
     if (!pat) throw new NotFoundException('patient_id not found');
